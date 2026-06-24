@@ -40,7 +40,7 @@ class DriverFactory
             'doppler'   => new DopplerDriver($config),
             'env'       => new EnvDriver($config),
             'array'     => new ArrayDriver($config),
-            default     => throw new InvalidArgumentException("Redacted driver [{$driverName}] is not supported."),
+            default     => throw new InvalidArgumentException("Redacted driver [$driverName] is not supported."),
         };
     }
 }

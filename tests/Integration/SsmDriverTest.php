@@ -38,12 +38,12 @@ class SsmDriverTest extends IntegrationTestCase
     {
         $path  = getenv('REDACTED_TEST_SSM_PATH');
         $expectedValue = getenv('REDACTED_TEST_SSM_VALUE');
-        $value = redacted("ssm://{$path}");
+        $value = redacted("ssm://$path");
 
         if ($expectedValue) {
             $this->assertSame($expectedValue, $value);
         }
-        $this->assertNotNull($value, "Expected SSM parameter '{$path}' to exist but got null.");
+        $this->assertNotNull($value, "Expected SSM parameter '$path' to exist but got null.");
         $this->assertNotEmpty($value);
     }
 

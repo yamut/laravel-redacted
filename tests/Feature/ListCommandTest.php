@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace Yamut\Redacted\Tests\Feature;
 
 use PHPUnit\Framework\Attributes\Test;
+use ReflectionException;
 use Yamut\Redacted\Support\ConfigScanner;
 use Yamut\Redacted\Tests\TestCase;
 
 class ListCommandTest extends TestCase
 {
+    /**
+     * @throws ReflectionException
+     */
     private function bindMockScanner(array $entries): void
     {
         $this->app->bind(ConfigScanner::class, function () use ($entries) {
@@ -41,6 +45,9 @@ class ListCommandTest extends TestCase
              ->assertExitCode(0);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function it_shows_miss_status_when_not_cached(): void
     {
@@ -55,6 +62,9 @@ class ListCommandTest extends TestCase
              ->assertExitCode(0);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function it_shows_cached_status_when_value_is_in_cache(): void
     {
@@ -70,6 +80,9 @@ class ListCommandTest extends TestCase
              ->assertExitCode(0);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function driver_filter_excludes_non_matching_schemes(): void
     {
@@ -86,6 +99,9 @@ class ListCommandTest extends TestCase
         $output->expectsOutputToContain('array');
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function it_masks_values_by_default(): void
     {
@@ -100,6 +116,9 @@ class ListCommandTest extends TestCase
              ->assertExitCode(0);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function reveal_is_blocked_in_production(): void
     {

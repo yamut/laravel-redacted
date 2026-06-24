@@ -10,6 +10,7 @@ use Aws\Result;
 use Aws\SecretsManager\SecretsManagerClient;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use ReflectionException;
 use ReflectionProperty;
 use Yamut\Redacted\Drivers\AsmDriver;
 
@@ -29,12 +30,18 @@ class AsmDriverTest extends TestCase
         ]);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     private function injectClient(AsmDriver $driver, SecretsManagerClient $client): void
     {
         $prop = new ReflectionProperty($driver, 'client');
         $prop->setValue($driver, $client);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function get_returns_secret_string(): void
     {
@@ -46,6 +53,9 @@ class AsmDriverTest extends TestCase
         $this->assertSame('{"host":"db.prod.internal"}', $driver->get('prod/db'));
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function get_returns_decoded_secret_binary(): void
     {
@@ -58,6 +68,9 @@ class AsmDriverTest extends TestCase
         $this->assertSame('binary-secret', $driver->get('prod/binary-secret'));
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function get_returns_null_on_resource_not_found(): void
     {
@@ -77,6 +90,9 @@ class AsmDriverTest extends TestCase
         $this->assertNull($driver->get('prod/missing'));
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function get_rethrows_invalid_request_exception(): void
     {
@@ -97,6 +113,9 @@ class AsmDriverTest extends TestCase
         $driver->get('prod/pending-deletion');
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function prefetch_uses_batch_get_secret_value(): void
     {
@@ -117,6 +136,9 @@ class AsmDriverTest extends TestCase
         $this->assertSame('val2', $result['prod/key2']);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function prefetch_resolves_arn_keyed_paths(): void
     {
@@ -137,6 +159,9 @@ class AsmDriverTest extends TestCase
         $this->assertSame('arn-resolved-val', $result[$arn]);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function prefetch_falls_back_to_sequential_gets_on_batch_failure(): void
     {

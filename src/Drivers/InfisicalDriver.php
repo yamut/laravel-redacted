@@ -25,6 +25,7 @@ class InfisicalDriver extends AbstractDriver
     /**
      * Fetch and cache a Universal Auth access token.
      * Tokens are reused until 60 seconds before expiry.
+     * @throws GuzzleException
      */
     private function accessToken(): string
     {
@@ -40,7 +41,7 @@ class InfisicalDriver extends AbstractDriver
         $clientSecret = $this->config['client_secret'] ?? throw new RuntimeException('InfisicalDriver: client_secret required');
 
         $response = $this->httpClient()->post(
-            "{$baseUrl}/api/v1/auth/universal-auth/login",
+            "$baseUrl/api/v1/auth/universal-auth/login",
             ['json' => ['clientId' => $clientId, 'clientSecret' => $clientSecret]]
         );
 
@@ -87,7 +88,7 @@ class InfisicalDriver extends AbstractDriver
 
         try {
             $response = $this->httpClient()->get(
-                "{$baseUrl}/api/v3/secrets/raw/" . rawurlencode($path),
+                "$baseUrl/api/v3/secrets/raw/" . rawurlencode($path),
                 [
                     'query'   => $query,
                     'headers' => ['Authorization' => 'Bearer ' . $this->accessToken()],

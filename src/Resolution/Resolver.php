@@ -202,6 +202,9 @@ class Resolver
         }
     }
 
+    /**
+     * @throws Throwable
+     */
     private static function resolveDriver(string $scheme): DriverInterface
     {
         // Fake drivers take absolute priority — effective even during early-boot
@@ -219,6 +222,9 @@ class Resolver
         return self::makeDriverFromDiskConfig($scheme);
     }
 
+    /**
+     * @throws Throwable
+     */
     private static function makeDriverFromDiskConfig(string $scheme): DriverInterface
     {
         $config       = self::getConfig();
@@ -247,6 +253,7 @@ class Resolver
      * config/redacted.php is loaded after config/app.php alphabetically, so
      * during early boot app('config')->get('redacted') returns null even though
      * the container is available. We read the file directly in that case.
+     * @throws Throwable
      */
     private static function getConfig(): array
     {

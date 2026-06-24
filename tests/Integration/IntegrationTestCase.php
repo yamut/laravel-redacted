@@ -23,7 +23,7 @@ abstract class IntegrationTestCase extends TestCase
     {
         foreach ($this->requiredEnv() as $var) {
             if (empty(getenv($var))) {
-                $this->markTestSkipped("Integration test skipped: {$var} is not set.");
+                $this->markTestSkipped("Integration test skipped: $var is not set.");
             }
         }
 

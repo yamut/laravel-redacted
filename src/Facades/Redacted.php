@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace Yamut\Redacted\Facades;
 
 use Illuminate\Support\Facades\Facade;
+use Yamut\Redacted\Contracts\DriverInterface;
 use Yamut\Redacted\RedactedManager;
 
 /**
- * @method static \Yamut\Redacted\Contracts\DriverInterface driver(string|null $driver = null)
+ * @method static DriverInterface driver(string|null $driver = null)
  * @method static void fake(array $uriToValueMap)
  * @method static string getDefaultDriver()
  *

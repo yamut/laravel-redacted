@@ -49,7 +49,7 @@ That's it. No middleware, no boot listeners, no service container gymnastics. Ju
 
 The package hooks into Laravel's config loading phase. When your app boots, Laravel reads every file in `config/` and evaluates them. `redacted()` intercepts calls during this phase and resolves values from whichever secret store you've configured, then returns the plaintext string to sit in the config array just like any other value.
 
-The clever bit is what happens when you run `php artisan config:cache`. Laravel executes your config files once, calls `redacted()` for each secret, gets back the actual values, and bakes the whole resolved config into `bootstrap/cache/config.php`. From that point on, until you regenerate the cache, your app reads secrets from a flat PHP file — zero network calls, zero latency, zero API credentials needed on the server. This is the recommended production setup and it's the reason this approach scales so cleanly.
+The clever bit is what happens when you run `php artisan config:cache`. Laravel executes your config files once, calls `redacted()` for each secret, gets back the actual values, and bakes the whole resolved config into `bootstrap/cache/config.php`. From that point on, until you regenerate the cache, your app reads secrets from a flat PHP file — zero network calls, zero latency, zero API credentials needed on the server. This is the recommended production setup, and it's the reason this approach scales so cleanly.
 
 For local development and environments where you can't or don't want to run `config:cache`, there's a three-layer caching system that keeps things snappy after the first resolution.
 
@@ -92,18 +92,18 @@ The scheme identifies the driver. The path is whatever the driver uses to locate
 
 Here's what each driver's URI looks like in practice:
 
-| Driver | Example URI |
-|--------|-------------|
-| AWS SSM | `ssm:///prod/myapp/db_password` |
-| AWS Secrets Manager | `asm://prod/myapp/db` |
-| ASM with JSON key | `asm://prod/myapp/db#password` |
-| Azure Key Vault | `akv://my-vault/stripe-key` |
-| GCP Secret Manager | `gcp://my-secret` |
-| HashiCorp Vault | `vault://secret/myapp/stripe#secret_key` |
-| Infisical | `infisical://DATABASE_URL` |
-| Doppler | `doppler://DATABASE_URL` |
-| Env var | `env://DB_HOST` |
-| In-memory (tests) | `array://some-key` |
+| Driver              | Example URI                              |
+|---------------------|------------------------------------------|
+| AWS SSM             | `ssm:///prod/myapp/db_password`          |
+| AWS Secrets Manager | `asm://prod/myapp/db`                    |
+| ASM with JSON key   | `asm://prod/myapp/db#password`           |
+| Azure Key Vault     | `akv://my-vault/stripe-key`              |
+| GCP Secret Manager  | `gcp://my-secret`                        |
+| HashiCorp Vault     | `vault://secret/myapp/stripe#secret_key` |
+| Infisical           | `infisical://DATABASE_URL`               |
+| Doppler             | `doppler://DATABASE_URL`                 |
+| Env var             | `env://DB_HOST`                          |
+| In-memory (tests)   | `array://some-key`                       |
 
 **The triple-slash thing**: SSM paths conventionally start with a `/` (e.g. `/prod/myapp/key`). Standard URIs treat `ssm://host/path` as host + path, so to represent a path that itself starts with `/`, you need `ssm:///prod/myapp/key` — three slashes total. The parser handles this correctly on PHP 8.2+.
 
@@ -609,7 +609,7 @@ Redacted::fake([
 
 **Important:** `fake()` works during both phases of app booting:
 - **Post-boot:** When `redacted()` is called in application code after the service provider has registered.
-- **Early-boot (config loading):** When `redacted()` is called inside config files during `LoadConfiguration`, before service providers run. This is the typical use case and it's handled by registering fake drivers in a static registry that the resolver checks before anything else.
+- **Early-boot (config loading):** When `redacted()` is called inside config files during `LoadConfiguration`, before service providers run. This is the typical use case, and it's handled by registering fake drivers in a static registry that the resolver checks before anything else.
 
 ### TestCase setup
 

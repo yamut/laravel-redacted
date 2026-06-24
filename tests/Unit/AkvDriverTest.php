@@ -10,6 +10,7 @@ use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use ReflectionException;
 use ReflectionProperty;
 use RuntimeException;
 use Yamut\Redacted\Drivers\AkvDriver;
@@ -28,6 +29,9 @@ class AkvDriverTest extends TestCase
         return new AkvDriver(array_merge($this->baseConfig, $config));
     }
 
+    /**
+     * @throws ReflectionException
+     */
     private function injectGuzzle(AkvDriver $driver, array $responses): void
     {
         $mock  = new MockHandler($responses);
@@ -41,6 +45,9 @@ class AkvDriverTest extends TestCase
         return json_encode(['access_token' => 'Bearer-token-xyz', 'expires_in' => $expiresIn]);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function get_authenticates_and_returns_secret(): void
     {
@@ -53,6 +60,9 @@ class AkvDriverTest extends TestCase
         $this->assertSame('my-secret-value', $driver->get('stripe-key'));
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function get_returns_null_on_404(): void
     {
@@ -65,6 +75,9 @@ class AkvDriverTest extends TestCase
         $this->assertNull($driver->get('missing-secret'));
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function get_throws_on_non_404_error(): void
     {
@@ -78,6 +91,9 @@ class AkvDriverTest extends TestCase
         $driver->get('forbidden-secret');
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function token_is_reused_on_second_call(): void
     {
@@ -93,6 +109,9 @@ class AkvDriverTest extends TestCase
         $this->assertSame('secret2', $driver->get('key2'));
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function vault_url_must_use_https(): void
     {
@@ -104,6 +123,9 @@ class AkvDriverTest extends TestCase
         $driver->get('key');
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function empty_vault_url_throws(): void
     {
@@ -115,6 +137,9 @@ class AkvDriverTest extends TestCase
         $driver->get('key');
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function auth_response_missing_access_token_throws(): void
     {
@@ -128,6 +153,9 @@ class AkvDriverTest extends TestCase
         $driver->get('key');
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function flush_clears_token_and_client(): void
     {

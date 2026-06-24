@@ -6,6 +6,7 @@ namespace Yamut\Redacted\Drivers;
 
 use Aws\Exception\AwsException;
 use Aws\Ssm\SsmClient;
+use RuntimeException;
 
 class SsmDriver extends AbstractDriver
 {
@@ -14,7 +15,7 @@ class SsmDriver extends AbstractDriver
     public function __construct(array $config)
     {
         if (!class_exists(SsmClient::class)) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 'The aws/aws-sdk-php package is required to use the SSM driver: composer require aws/aws-sdk-php'
             );
         }

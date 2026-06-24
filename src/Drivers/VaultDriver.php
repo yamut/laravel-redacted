@@ -7,6 +7,8 @@ namespace Yamut\Redacted\Drivers;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Psr7\HttpFactory;
 use GuzzleHttp\Psr7\Uri;
+use InvalidArgumentException;
+use Psr\Http\Client\ClientExceptionInterface;
 use RuntimeException;
 use Vault\AuthenticationStrategies\AppRoleAuthenticationStrategy;
 use Vault\AuthenticationStrategies\TokenAuthenticationStrategy;
@@ -20,13 +22,18 @@ class VaultDriver extends AbstractDriver
     public function __construct(array $config)
     {
         if (!class_exists(Client::class)) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 'The csharpru/vault-php package is required to use the Vault driver: composer require csharpru/vault-php'
             );
         }
         parent::__construct($config);
     }
 
+    /**
+     * @throws ClientExceptionInterface
+     * @throws \Vault\Exceptions\RuntimeException
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
     private function client(): Client
     {
         if ($this->client === null) {
@@ -67,6 +74,12 @@ class VaultDriver extends AbstractDriver
      *   vault://secret/myapp/config     → reads /v1/secret/myapp/config (KV v1)
      *   vault://secret/myapp/config     → reads /v1/secret/data/myapp/config (KV v2)
      *   vault://secret/myapp/config#key → returns $values['key']
+     * @param string $path
+     * @return string|null
+     * @throws ClientExceptionInterface
+     * @throws RequestException
+     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws \Vault\Exceptions\RuntimeException
      */
     public function get(string $path): ?string
     {
@@ -120,8 +133,8 @@ class VaultDriver extends AbstractDriver
         $sub   = $parts[1] ?? '';
 
         if ($sub === '') {
-            throw new \InvalidArgumentException(
-                "VaultDriver: path \"{$path}\" contains only a KV mount name with no secret path. " .
+            throw new InvalidArgumentException(
+                "VaultDriver: path \"$path\" contains only a KV mount name with no secret path. " .
                 'Expected format: {mount}/{secret-path} (e.g. secret/myapp/db-password).'
             );
         }

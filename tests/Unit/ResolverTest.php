@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace Yamut\Redacted\Tests\Unit;
 
 use PHPUnit\Framework\Attributes\Test;
+use Psr\SimpleCache\InvalidArgumentException;
+use RuntimeException;
+use Yamut\Redacted\Drivers\AbstractDriver;
 use Yamut\Redacted\Resolution\Resolver;
+use Yamut\Redacted\Resolution\UriParser;
 use Yamut\Redacted\Tests\TestCase;
 
 class ResolverTest extends TestCase
@@ -156,7 +160,7 @@ class ResolverTest extends TestCase
     {
         // warm() and resolve() must use the same "{scheme}:{path}" key format.
         // Parse a URI the same way CacheCommand would, then warm with that key.
-        $parsed   = \Yamut\Redacted\Resolution\UriParser::parse('array://prod/key');
+        $parsed   = UriParser::parse('array://prod/key');
         $cacheKey = $parsed['scheme'] . ':' . $parsed['path'];
 
         Resolver::warm([$cacheKey => 'from-warm']);
@@ -167,10 +171,10 @@ class ResolverTest extends TestCase
     #[Test]
     public function throwing_driver_returns_fallback(): void
     {
-        $throwingDriver = new class (['driver' => 'throwing']) extends \Yamut\Redacted\Drivers\AbstractDriver {
+        $throwingDriver = new class (['driver' => 'throwing']) extends AbstractDriver {
             public function get(string $path): ?string
             {
-                throw new \RuntimeException('simulated driver failure');
+                throw new RuntimeException('simulated driver failure');
             }
         };
         Resolver::setFakeDriver('throw', $throwingDriver);
@@ -183,10 +187,10 @@ class ResolverTest extends TestCase
     #[Test]
     public function throwing_driver_returns_null_fallback_when_no_fallback_given(): void
     {
-        $throwingDriver = new class (['driver' => 'throwing']) extends \Yamut\Redacted\Drivers\AbstractDriver {
+        $throwingDriver = new class (['driver' => 'throwing']) extends AbstractDriver {
             public function get(string $path): ?string
             {
-                throw new \RuntimeException('simulated driver failure');
+                throw new RuntimeException('simulated driver failure');
             }
         };
         Resolver::setFakeDriver('throw', $throwingDriver);
@@ -194,6 +198,9 @@ class ResolverTest extends TestCase
         $this->assertNull(Resolver::resolve('throw://some/path'));
     }
 
+    /**
+     * @throws InvalidArgumentException
+     */
     #[Test]
     public function layer2_cache_is_populated_after_first_resolve(): void
     {

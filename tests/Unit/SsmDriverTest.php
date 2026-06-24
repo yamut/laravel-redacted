@@ -8,18 +8,23 @@ use Aws\Exception\AwsException;
 use Aws\MockHandler;
 use Aws\Result;
 use Aws\Ssm\SsmClient;
+use Exception;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use ReflectionException;
 use ReflectionProperty;
 use Yamut\Redacted\Drivers\SsmDriver;
 
 class SsmDriverTest extends TestCase
 {
+    /**
+     * @throws ReflectionException
+     */
     private function makeDriverWithMock(array ...$resultSets): array
     {
         $mock = new MockHandler();
         foreach ($resultSets as $result) {
-            $mock->append($result instanceof \Exception ? $result : new Result($result));
+            $mock->append($result instanceof Exception ? $result : new Result($result));
         }
         $client = new SsmClient([
             'region'      => 'us-east-1',
@@ -33,6 +38,9 @@ class SsmDriverTest extends TestCase
         return [$driver, $mock];
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function get_returns_parameter_value(): void
     {
@@ -43,6 +51,9 @@ class SsmDriverTest extends TestCase
         $this->assertSame('secret-value', $driver->get('/prod/key'));
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function get_returns_null_on_parameter_not_found(): void
     {
@@ -63,6 +74,9 @@ class SsmDriverTest extends TestCase
         $this->assertNull($driver->get('/prod/missing'));
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function get_rethrows_non_parameter_not_found_exception(): void
     {
@@ -84,6 +98,9 @@ class SsmDriverTest extends TestCase
         $driver->get('/prod/key');
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function prefetch_returns_all_found_values(): void
     {
@@ -111,6 +128,9 @@ class SsmDriverTest extends TestCase
         $this->assertSame('val2', $result['/prod/key2']);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function prefetch_returns_null_for_missing_parameters(): void
     {
@@ -135,16 +155,19 @@ class SsmDriverTest extends TestCase
         $this->assertNull($result['/prod/missing']);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function prefetch_chunks_into_batches_of_ten(): void
     {
         // Build 11 paths — should trigger 2 getParameters calls
-        $paths = array_map(fn($i) => "/prod/key{$i}", range(1, 11));
+        $paths = array_map(fn($i) => "/prod/key$i", range(1, 11));
 
         $mock = new MockHandler();
         // First chunk: paths 1-10 → all found
         $mock->append(new Result([
-            'Parameters' => array_map(fn($p) => ['Name' => $p, 'Value' => "v{$p}"], array_slice($paths, 0, 10)),
+            'Parameters' => array_map(fn($p) => ['Name' => $p, 'Value' => "v$p"], array_slice($paths, 0, 10)),
             'InvalidParameters' => [],
         ]));
         // Second chunk: path 11 → found
@@ -169,6 +192,9 @@ class SsmDriverTest extends TestCase
         $this->assertSame('v11', $result['/prod/key11']);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function prefetch_degrades_to_individual_gets_on_batch_failure(): void
     {

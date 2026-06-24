@@ -15,6 +15,7 @@
         "csharpru/vault-php": "^4.4",
         "google/cloud-secret-manager": "^2.0",
         "larastan/larastan": "^3.10",
+        "laravel/octane": "^2.17",
         "orchestra/testbench": "^10.0",
         "phpstan/phpstan": "^2.2",
         "phpunit/phpunit": "^11.0",
@@ -23,7 +24,8 @@
     "suggest": {
         "aws/aws-sdk-php": "Required to use the SSM or ASM (Secrets Manager) drivers",
         "csharpru/vault-php": "Required to use the HashiCorp Vault driver",
-        "google/cloud-secret-manager": "Required to use the GCP Secret Manager driver"
+        "google/cloud-secret-manager": "Required to use the GCP Secret Manager driver",
+        "laravel/octane": "Required to clear the static cache between Octane requests"
     },
     "autoload": {
         "psr-4": {

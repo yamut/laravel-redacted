@@ -10,6 +10,7 @@ use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use ReflectionException;
 use ReflectionProperty;
 use RuntimeException;
 use Yamut\Redacted\Drivers\InfisicalDriver;
@@ -29,6 +30,9 @@ class InfisicalDriverTest extends TestCase
         return new InfisicalDriver(array_merge($this->baseConfig, $config));
     }
 
+    /**
+     * @throws ReflectionException
+     */
     private function injectGuzzle(InfisicalDriver $driver, array $responses): void
     {
         $mock  = new MockHandler($responses);
@@ -47,6 +51,9 @@ class InfisicalDriverTest extends TestCase
         return json_encode(['secret' => ['secretValue' => $value]]);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function get_authenticates_and_returns_secret(): void
     {
@@ -61,6 +68,9 @@ class InfisicalDriverTest extends TestCase
         $this->assertSame('my-db-password', $result);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function get_reuses_token_on_second_call(): void
     {
@@ -76,6 +86,9 @@ class InfisicalDriverTest extends TestCase
         $this->assertSame('value2', $driver->get('KEY2'));
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function get_returns_null_on_404(): void
     {
@@ -88,6 +101,9 @@ class InfisicalDriverTest extends TestCase
         $this->assertNull($driver->get('MISSING'));
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function get_retries_once_on_401_by_clearing_token(): void
     {
@@ -105,6 +121,9 @@ class InfisicalDriverTest extends TestCase
         $this->assertSame('retry-value', $result);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function get_throws_on_repeated_401(): void
     {
@@ -121,6 +140,9 @@ class InfisicalDriverTest extends TestCase
         $driver->get('KEY');
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function millisecond_expires_in_is_converted_to_seconds(): void
     {
@@ -142,6 +164,9 @@ class InfisicalDriverTest extends TestCase
         $this->assertGreaterThan(time() + 80_000, $expiry, 'token should still last ~24 h after conversion');
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function base_url_must_use_https(): void
     {
@@ -153,6 +178,9 @@ class InfisicalDriverTest extends TestCase
         $driver->get('KEY');
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function missing_workspace_throws(): void
     {

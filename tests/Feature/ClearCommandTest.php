@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace Yamut\Redacted\Tests\Feature;
 
 use PHPUnit\Framework\Attributes\Test;
+use Psr\SimpleCache\InvalidArgumentException;
+use ReflectionException;
 use Yamut\Redacted\Resolution\Resolver;
 use Yamut\Redacted\Support\ConfigScanner;
 use Yamut\Redacted\Tests\TestCase;
 
 class ClearCommandTest extends TestCase
 {
+    /**
+     * @throws ReflectionException
+     */
     private function bindMockScanner(array $entries): void
     {
         $this->app->bind(ConfigScanner::class, function () use ($entries) {
@@ -20,6 +25,9 @@ class ClearCommandTest extends TestCase
         });
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function it_exits_successfully_with_no_entries(): void
     {
@@ -30,6 +38,10 @@ class ClearCommandTest extends TestCase
              ->assertExitCode(0);
     }
 
+    /**
+     * @throws InvalidArgumentException
+     * @throws ReflectionException
+     */
     #[Test]
     public function it_clears_matching_cache_entries(): void
     {
@@ -47,6 +59,9 @@ class ClearCommandTest extends TestCase
         $this->assertNull($this->app['cache']->store('array')->get($prefix . 'array:prod/key'));
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function it_reports_zero_cleared_when_entries_not_in_cache(): void
     {
@@ -60,6 +75,9 @@ class ClearCommandTest extends TestCase
              ->assertExitCode(0);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function static_flag_clears_static_cache(): void
     {
@@ -77,6 +95,9 @@ class ClearCommandTest extends TestCase
         $this->assertNull($result);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function without_static_flag_static_cache_is_preserved(): void
     {

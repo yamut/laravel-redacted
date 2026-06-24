@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Yamut\Redacted\Drivers;
 
 use Google\ApiCore\ApiException;
+use Google\ApiCore\ValidationException;
 use Google\Cloud\SecretManager\V1\Client\SecretManagerServiceClient;
 use Google\Cloud\SecretManager\V1\AccessSecretVersionRequest;
 use RuntimeException;
@@ -17,13 +18,16 @@ class GcpDriver extends AbstractDriver
     public function __construct(array $config)
     {
         if (!class_exists(SecretManagerServiceClient::class)) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 'The google/cloud-secret-manager package is required to use the GCP driver: composer require google/cloud-secret-manager'
             );
         }
         parent::__construct($config);
     }
 
+    /**
+     * @throws ValidationException
+     */
     private function client(): SecretManagerClientInterface
     {
         if ($this->client === null) {
@@ -46,6 +50,8 @@ class GcpDriver extends AbstractDriver
      *     → expanded to projects/{project}/secrets/my-secret/versions/latest
      *   - A full resource name: 'projects/my-project/secrets/my-secret/versions/1'
      *     → used as-is
+     * @throws ApiException
+     * @throws ValidationException
      */
     public function get(string $path): ?string
     {
@@ -55,7 +61,7 @@ class GcpDriver extends AbstractDriver
         $normalizedPath = ltrim($path, '/');
         $resourceName   = str_starts_with($normalizedPath, 'projects/')
             ? $normalizedPath
-            : "projects/{$project}/secrets/{$normalizedPath}/versions/latest";
+            : "projects/$project/secrets/$normalizedPath/versions/latest";
 
         try {
             $request  = (new AccessSecretVersionRequest())->setName($resourceName);

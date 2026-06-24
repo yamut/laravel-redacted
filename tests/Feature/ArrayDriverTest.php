@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Yamut\Redacted\Tests\Feature;
 
+use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
 use Yamut\Redacted\Facades\Redacted;
 use Yamut\Redacted\Tests\TestCase;
@@ -82,7 +83,7 @@ class ArrayDriverTest extends TestCase
     #[Test]
     public function fake_throws_when_plain_and_fragment_uris_target_same_path(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
 
         Redacted::fake([
             'asm://prod/db'       => 'raw-string',

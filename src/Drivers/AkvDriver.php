@@ -24,6 +24,8 @@ class AkvDriver extends AbstractDriver
 
     /**
      * Obtain an OAuth2 access token. Caches until 60 seconds before expiry.
+     * @throws GuzzleException
+     * @throws GuzzleException
      */
     private function accessToken(): string
     {
@@ -38,6 +40,9 @@ class AkvDriver extends AbstractDriver
         return $this->fetchClientCredentialsToken();
     }
 
+    /**
+     * @throws GuzzleException
+     */
     private function fetchClientCredentialsToken(): string
     {
         $tenantId     = $this->config['tenant_id']     ?? throw new RuntimeException('AkvDriver: tenant_id is required');
@@ -45,7 +50,7 @@ class AkvDriver extends AbstractDriver
         $clientSecret = $this->config['client_secret'] ?? throw new RuntimeException('AkvDriver: client_secret is required');
 
         $response = $this->httpClient()->post(
-            "https://login.microsoftonline.com/{$tenantId}/oauth2/v2.0/token",
+            "https://login.microsoftonline.com/$tenantId/oauth2/v2.0/token",
             [
                 'form_params' => [
                     'grant_type'    => 'client_credentials',
@@ -64,6 +69,9 @@ class AkvDriver extends AbstractDriver
         return $this->accessToken;
     }
 
+    /**
+     * @throws GuzzleException
+     */
     private function fetchManagedIdentityToken(): string
     {
         $response = $this->httpClient()->get(
@@ -99,7 +107,7 @@ class AkvDriver extends AbstractDriver
 
         try {
             $response = $this->httpClient()->get(
-                "{$vaultUrl}/secrets/" . ltrim($path, '/'),
+                "$vaultUrl/secrets/" . ltrim($path, '/'),
                 [
                     'query'   => ['api-version' => self::API_VERSION],
                     'headers' => ['Authorization' => 'Bearer ' . $this->accessToken()],

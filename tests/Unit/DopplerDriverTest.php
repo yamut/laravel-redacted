@@ -12,6 +12,7 @@ use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use ReflectionException;
 use ReflectionProperty;
 use RuntimeException;
 use Yamut\Redacted\Drivers\DopplerDriver;
@@ -29,6 +30,9 @@ class DopplerDriverTest extends TestCase
         return new DopplerDriver(array_merge($this->baseConfig, $config));
     }
 
+    /**
+     * @throws ReflectionException
+     */
     private function injectGuzzle(DopplerDriver $driver, array $responses): void
     {
         $mock  = new MockHandler($responses);
@@ -37,6 +41,9 @@ class DopplerDriverTest extends TestCase
         $prop->setValue($driver, new Client(['handler' => $stack]));
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function get_returns_computed_value(): void
     {
@@ -48,6 +55,9 @@ class DopplerDriverTest extends TestCase
         $this->assertSame('secret_value', $driver->get('DATABASE_URL'));
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function get_falls_back_to_raw_when_computed_absent(): void
     {
@@ -59,6 +69,9 @@ class DopplerDriverTest extends TestCase
         $this->assertSame('raw_value', $driver->get('API_KEY'));
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function get_returns_null_on_404(): void
     {
@@ -70,6 +83,9 @@ class DopplerDriverTest extends TestCase
         $this->assertNull($driver->get('MISSING'));
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function get_throws_runtime_exception_on_non_404_client_error(): void
     {
@@ -91,6 +107,9 @@ class DopplerDriverTest extends TestCase
         $driver->get('KEY');
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function prefetch_bulk_download_returns_all_requested_paths(): void
     {
@@ -109,6 +128,9 @@ class DopplerDriverTest extends TestCase
         $this->assertSame('sk_live_abc', $result['API_KEY']);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function prefetch_returns_null_for_paths_absent_from_bulk_response(): void
     {
@@ -123,6 +145,9 @@ class DopplerDriverTest extends TestCase
         $this->assertNull($result['MISSING']);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function prefetch_rethrows_on_401_auth_failure(): void
     {
@@ -136,6 +161,9 @@ class DopplerDriverTest extends TestCase
         $driver->prefetch(['KEY']);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function prefetch_rethrows_on_403_auth_failure(): void
     {
@@ -148,6 +176,9 @@ class DopplerDriverTest extends TestCase
         $driver->prefetch(['KEY']);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function prefetch_falls_back_to_individual_gets_on_non_auth_failure(): void
     {

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Yamut\Redacted\Support;
 
-class ValueMasker
+readonly class ValueMasker
 {
     public function __construct(private int $showLength = 4)
     {

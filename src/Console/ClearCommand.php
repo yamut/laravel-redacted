@@ -41,7 +41,7 @@ class ClearCommand extends Command
             $this->info('In-process static cache cleared.');
         }
 
-        $this->info("Cleared {$cleared} cache entries.");
+        $this->info("Cleared $cleared cache entries.");
 
         return self::SUCCESS;
     }

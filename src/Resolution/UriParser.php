@@ -40,7 +40,7 @@ class UriParser
         // of triple-slash URIs (e.g. ssm:///path) which parse_url handles
         // inconsistently across PHP versions.
         if (!preg_match('/^([a-zA-Z][a-zA-Z0-9+\-.]*):\/\/(.*)$/s', $uri, $matches)) {
-            throw new InvalidArgumentException("Invalid redacted URI: '{$originalUri}'");
+            throw new InvalidArgumentException("Invalid redacted URI: '$originalUri'");
         }
 
         $scheme = strtolower($matches[1]);
@@ -66,7 +66,7 @@ class UriParser
         }
 
         if ($combined === '' || $combined === '/') {
-            throw new InvalidArgumentException("Redacted URI has empty path: '{$originalUri}'");
+            throw new InvalidArgumentException("Redacted URI has empty path: '$originalUri'");
         }
 
         return [

@@ -7,6 +7,8 @@ namespace Yamut\Redacted;
 use Illuminate\Support\Manager;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
+use RuntimeException;
+use Throwable;
 use Yamut\Redacted\Contracts\DriverInterface;
 use Yamut\Redacted\Drivers\ArrayDriver;
 use Yamut\Redacted\Drivers\AsmDriver;
@@ -17,7 +19,6 @@ use Yamut\Redacted\Drivers\GcpDriver;
 use Yamut\Redacted\Drivers\InfisicalDriver;
 use Yamut\Redacted\Drivers\SsmDriver;
 use Yamut\Redacted\Drivers\VaultDriver;
-use Yamut\Redacted\DriverFactory;
 use Yamut\Redacted\Resolution\Resolver;
 use Yamut\Redacted\Resolution\UriParser;
 
@@ -45,7 +46,7 @@ class RedactedManager extends Manager
      */
     protected function createDriver($driver): DriverInterface
     {
-        $config = $this->config->get("redacted.drivers.{$driver}", ['driver' => $driver]);
+        $config = $this->config->get("redacted.drivers.$driver", ['driver' => $driver]);
         $method = 'create' . Str::studly($driver) . 'Driver';
 
         if (method_exists($this, $method)) {
@@ -121,7 +122,7 @@ class RedactedManager extends Manager
     public function fake(array $uriToValueMap): void
     {
         if (app()->environment('production')) {
-            throw new \RuntimeException('Redacted::fake() cannot be called in the production environment.');
+            throw new RuntimeException('Redacted::fake() cannot be called in the production environment.');
         }
 
         // Group entries by path so that multiple fragment-keyed URIs targeting
@@ -162,7 +163,7 @@ class RedactedManager extends Manager
         foreach ($blobs as $path => $blob) {
             if (!empty($blob['keys']) && isset($blob['raw'])) {
                 throw new InvalidArgumentException(
-                    "Redacted::fake() received both a plain URI and fragment-keyed URIs for \"{$path}\". " .
+                    "Redacted::fake() received both a plain URI and fragment-keyed URIs for \"$path\". " .
                     'Provide either a plain URI or fragment URIs for a given path, not both.'
                 );
             }
@@ -199,7 +200,7 @@ class RedactedManager extends Manager
             $store       = $cacheConfig['store'] ?? null;
             $prefix      = $cacheConfig['prefix'] ?? ('redacted:' . config('app.name', 'laravel') . ':');
             app('cache')->store($store)->forget($prefix . $scheme . ':' . $path);
-        } catch (\Throwable) {
+        } catch (Throwable) {
         }
     }
 }

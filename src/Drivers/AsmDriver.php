@@ -6,6 +6,7 @@ namespace Yamut\Redacted\Drivers;
 
 use Aws\Exception\AwsException;
 use Aws\SecretsManager\SecretsManagerClient;
+use RuntimeException;
 
 class AsmDriver extends AbstractDriver
 {
@@ -14,7 +15,7 @@ class AsmDriver extends AbstractDriver
     public function __construct(array $config)
     {
         if (!class_exists(SecretsManagerClient::class)) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 'The aws/aws-sdk-php package is required to use the ASM driver: composer require aws/aws-sdk-php'
             );
         }
@@ -83,9 +84,11 @@ class AsmDriver extends AbstractDriver
             // ARNs resolve correctly instead of silently staying null.
             $fetched = [];
             foreach ($result['SecretValues'] as $secret) {
-                $value = isset($secret['SecretString'])
-                    ? $secret['SecretString']
-                    : (isset($secret['SecretBinary']) ? (base64_decode($secret['SecretBinary'], true) ?: null) : null);
+                $value = $secret['SecretString'] ?? (
+                    isset($secret['SecretBinary']) ? (
+                        base64_decode($secret['SecretBinary'], true) ?: null
+                    ) : null
+                );
 
                 if (isset($secret['Name'])) {
                     $fetched[$secret['Name']] = $value;

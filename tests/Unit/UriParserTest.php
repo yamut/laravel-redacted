@@ -18,9 +18,9 @@ class UriParserTest extends TestCase
     {
         $result = UriParser::parse($uri);
 
-        $this->assertSame($scheme, $result['scheme'], "scheme mismatch for: {$uri}");
-        $this->assertSame($path, $result['path'], "path mismatch for: {$uri}");
-        $this->assertSame($jsonKey, $result['json_key'], "json_key mismatch for: {$uri}");
+        $this->assertSame($scheme, $result['scheme'], "scheme mismatch for: $uri");
+        $this->assertSame($path, $result['path'], "path mismatch for: $uri");
+        $this->assertSame($jsonKey, $result['json_key'], "json_key mismatch for: $uri");
     }
 
     public static function validUriProvider(): array

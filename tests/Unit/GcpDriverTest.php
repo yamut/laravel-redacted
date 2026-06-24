@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace Yamut\Redacted\Tests\Unit;
 
 use Google\ApiCore\ApiException;
+use Google\ApiCore\ValidationException;
 use Google\Cloud\SecretManager\V1\AccessSecretVersionRequest;
 use Google\Cloud\SecretManager\V1\AccessSecretVersionResponse;
 use Google\Cloud\SecretManager\V1\SecretPayload;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use ReflectionException;
 use ReflectionProperty;
+use RuntimeException;
 use Yamut\Redacted\Contracts\SecretManagerClientInterface;
 use Yamut\Redacted\Drivers\GcpDriver;
 
@@ -21,6 +24,12 @@ class GcpDriverTest extends TestCase
         return new GcpDriver(array_merge(['project' => 'my-project'], $config));
     }
 
+    /**
+     * @param GcpDriver $driver
+     * @param SecretManagerClientInterface $mockClient
+     * @return void
+     * @throws ReflectionException
+     */
     private function injectClient(GcpDriver $driver, SecretManagerClientInterface $mockClient): void
     {
         $prop = new ReflectionProperty($driver, 'client');
@@ -31,41 +40,52 @@ class GcpDriverTest extends TestCase
     {
         return new class ($data) implements SecretManagerClientInterface {
             public string $capturedResourceName = '';
-            public function __construct(private string $data)
+            public function __construct(private readonly string $data)
             {
             }
-            public function accessSecretVersion(AccessSecretVersionRequest $req, array $callOptions = []): AccessSecretVersionResponse
+            public function accessSecretVersion(AccessSecretVersionRequest $request, array $callOptions = []): AccessSecretVersionResponse
             {
-                $this->capturedResourceName = $req->getName();
+                $this->capturedResourceName = $request->getName();
                 $payload = (new SecretPayload())->setData($this->data);
                 return (new AccessSecretVersionResponse())->setPayload($payload);
             }
-            public function close(): void {}
+            public function close(): void
+            {
+            }
         };
     }
 
     private function mockClientThrowingNotFound(): SecretManagerClientInterface
     {
         return new class implements SecretManagerClientInterface {
-            public function accessSecretVersion(AccessSecretVersionRequest $req, array $callOptions = []): never
+            public function accessSecretVersion(AccessSecretVersionRequest $request, array $callOptions = []): never
             {
                 throw new ApiException('Secret not found', 5, 'NOT_FOUND');
             }
-            public function close(): void {}
+            public function close(): void
+            {
+            }
         };
     }
 
     private function mockClientThrowingPermissionDenied(): SecretManagerClientInterface
     {
         return new class implements SecretManagerClientInterface {
-            public function accessSecretVersion(AccessSecretVersionRequest $req, array $callOptions = []): never
+            public function accessSecretVersion(AccessSecretVersionRequest $request, array $callOptions = []): never
             {
                 throw new ApiException('Permission denied', 7, 'PERMISSION_DENIED');
             }
-            public function close(): void {}
+            public function close(): void
+            {
+            }
         };
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ApiException
+     * @throws ValidationException
+     */
     #[Test]
     public function get_expands_simple_name_to_full_resource_path(): void
     {
@@ -79,6 +99,11 @@ class GcpDriverTest extends TestCase
         $this->assertSame($expected, $mock->capturedResourceName);
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ApiException
+     * @throws ValidationException
+     */
     #[Test]
     public function get_passes_full_resource_name_through_unchanged(): void
     {
@@ -92,6 +117,11 @@ class GcpDriverTest extends TestCase
         $this->assertSame($fullName, $mock->capturedResourceName);
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ApiException
+     * @throws ValidationException
+     */
     #[Test]
     public function get_strips_leading_slash_before_expansion(): void
     {
@@ -105,6 +135,11 @@ class GcpDriverTest extends TestCase
         $this->assertSame($expected, $mock->capturedResourceName);
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ApiException
+     * @throws ValidationException
+     */
     #[Test]
     public function get_returns_secret_data(): void
     {
@@ -114,6 +149,11 @@ class GcpDriverTest extends TestCase
         $this->assertSame('the-secret-value', $driver->get('my-secret'));
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ApiException
+     * @throws ValidationException
+     */
     #[Test]
     public function get_returns_null_on_not_found(): void
     {
@@ -123,6 +163,10 @@ class GcpDriverTest extends TestCase
         $this->assertNull($driver->get('missing-secret'));
     }
 
+    /**
+     * @throws ReflectionException
+     * @throws ValidationException
+     */
     #[Test]
     public function get_rethrows_non_not_found_exception(): void
     {
@@ -133,11 +177,15 @@ class GcpDriverTest extends TestCase
         $driver->get('forbidden-secret');
     }
 
+    /**
+     * @throws ApiException
+     * @throws ValidationException
+     */
     #[Test]
     public function get_throws_when_project_is_missing(): void
     {
         $driver = new GcpDriver([]);
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('project is required');
         $driver->get('my-secret');
     }

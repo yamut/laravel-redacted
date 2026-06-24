@@ -61,7 +61,7 @@ class CacheCommand extends Command
                 $driver  = $manager->driver($scheme);
                 $results = $driver->prefetch($paths);
             } catch (Throwable $e) {
-                $this->error("Driver [{$scheme}] failed: " . get_class($e));
+                $this->error("Driver [$scheme] failed: " . get_class($e));
                 foreach ($paths as $path) {
                     $rows[] = [$scheme . ':' . $path, 'FAILED'];
                     $failed++;
@@ -85,7 +85,7 @@ class CacheCommand extends Command
         }
 
         $this->table(['Key', 'Status'], $rows);
-        $this->info("Cached {$fetched} secret(s). {$failed} failed or not found.");
+        $this->info("Cached $fetched secret(s). $failed failed or not found.");
 
         return $failed > 0 ? self::FAILURE : self::SUCCESS;
     }

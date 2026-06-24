@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace Yamut\Redacted\Tests\Feature;
 
 use PHPUnit\Framework\Attributes\Test;
+use Psr\SimpleCache\InvalidArgumentException;
+use ReflectionException;
 use Yamut\Redacted\Resolution\Resolver;
 use Yamut\Redacted\Support\ConfigScanner;
 use Yamut\Redacted\Tests\TestCase;
 
 class CacheCommandTest extends TestCase
 {
+    /**
+     * @throws ReflectionException
+     */
     private function bindMockScanner(array $entries): void
     {
         $this->app->bind(ConfigScanner::class, function () use ($entries) {
@@ -35,6 +40,10 @@ class CacheCommandTest extends TestCase
              ->assertExitCode(0);
     }
 
+    /**
+     * @throws InvalidArgumentException
+     * @throws ReflectionException
+     */
     #[Test]
     public function dry_run_does_not_populate_cache(): void
     {
@@ -51,6 +60,10 @@ class CacheCommandTest extends TestCase
         $this->assertNull($cached, '--dry-run should not write to cache');
     }
 
+    /**
+     * @throws InvalidArgumentException
+     * @throws ReflectionException
+     */
     #[Test]
     public function it_fetches_and_caches_secrets(): void
     {
@@ -69,6 +82,9 @@ class CacheCommandTest extends TestCase
         $this->assertSame('secret-value', $cached);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function it_reports_not_found_when_driver_returns_null(): void
     {
@@ -84,6 +100,9 @@ class CacheCommandTest extends TestCase
              ->assertExitCode(1);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function it_warms_static_cache_after_fetching(): void
     {
@@ -106,6 +125,9 @@ class CacheCommandTest extends TestCase
         $this->assertSame('warm-value', $result);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     #[Test]
     public function warm_and_cache_keys_use_same_format(): void
     {
