@@ -1,0 +1,65 @@
+{
+    "name": "yamut/laravel-redacted",
+    "description": "Resolve Laravel config values from remote secret stores (AWS SSM, Secrets Manager, Azure Key Vault, GCP Secret Manager, HashiCorp Vault, Infisical, Doppler)",
+    "type": "library",
+    "license": "MIT",
+    "version": "0.1.0",
+    "require": {
+        "php": "^8.2",
+        "guzzlehttp/guzzle": "^7.0",
+        "guzzlehttp/psr7": "^2.0",
+        "illuminate/support": "^12.0"
+    },
+    "require-dev": {
+        "aws/aws-sdk-php": "^3.0",
+        "csharpru/vault-php": "^4.4",
+        "google/cloud-secret-manager": "^2.0",
+        "larastan/larastan": "^3.10",
+        "orchestra/testbench": "^10.0",
+        "phpstan/phpstan": "^2.2",
+        "phpunit/phpunit": "^11.0",
+        "squizlabs/php_codesniffer": "^4.0"
+    },
+    "suggest": {
+        "aws/aws-sdk-php": "Required to use the SSM or ASM (Secrets Manager) drivers",
+        "csharpru/vault-php": "Required to use the HashiCorp Vault driver",
+        "google/cloud-secret-manager": "Required to use the GCP Secret Manager driver"
+    },
+    "autoload": {
+        "psr-4": {
+            "Yamut\\Redacted\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Yamut\\Redacted\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Yamut\\Redacted\\RedactedServiceProvider"
+            ],
+            "aliases": {
+                "Redacted": "Yamut\\Redacted\\Facades\\Redacted"
+            }
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "preferred-install": "dist",
+        "optimize-autoloader": true
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit --testsuite=Unit,Feature",
+        "test:integration": "vendor/bin/phpunit --testsuite=Integration",
+        "lint": "vendor/bin/phpcs",
+        "lint:fix": "vendor/bin/phpcbf",
+        "analyse": "vendor/bin/phpstan analyse"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
