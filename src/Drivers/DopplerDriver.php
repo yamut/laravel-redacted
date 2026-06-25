@@ -20,34 +20,60 @@ class DopplerDriver extends AbstractDriver
         return $this->httpClient ??= new Client(['connect_timeout' => 5, 'timeout' => 10]);
     }
 
+    private function isServiceToken(string $token): bool
+    {
+        return str_starts_with($token, 'dp.st.');
+    }
+
+    private function resolveProjectConfig(string $token): array
+    {
+        $isService = $this->isServiceToken($token);
+        $project   = $this->config['project'] ?? null;
+        $config    = $this->config['config']  ?? null;
+
+        if (! $isService && ($project === null || $config === null)) {
+            throw new RuntimeException('DopplerDriver: project and config are required for personal tokens (dp.pt.*)');
+        }
+
+        return [$project, $config];
+    }
+
+    private function buildQuery(array $base, ?string $project, ?string $config): array
+    {
+        if ($project !== null) {
+            $base['project'] = $project;
+        }
+        if ($config !== null) {
+            $base['config'] = $config;
+        }
+        return $base;
+    }
+
     /**
      * Path is the secret name (e.g. DATABASE_URL).
      * Project and config (environment) come from driver config.
+     * For service tokens (dp.st.*) they are optional; for personal tokens they are required.
      */
     public function get(string $path): ?string
     {
-        $token   = $this->config['token']   ?? throw new RuntimeException('DopplerDriver: token required');
-        $project = $this->config['project'] ?? throw new RuntimeException('DopplerDriver: project required');
-        $config  = $this->config['config']  ?? throw new RuntimeException('DopplerDriver: config required');
+        $token = $this->config['token'] ?? throw new RuntimeException('DopplerDriver: token required');
+        [$project, $config] = $this->resolveProjectConfig($token);
 
         try {
             $response = $this->httpClient()->get(
-                self::BASE_URL . '/v3/configs/config/secrets',
+                self::BASE_URL . '/v3/configs/config/secret',
                 [
-                    'query'   => ['project' => $project, 'config' => $config, 'name' => $path],
+                    'query'   => $this->buildQuery(['name' => $path], $project, $config),
                     'headers' => ['Authorization' => 'Bearer ' . $token],
                 ]
             );
 
             $body = json_decode((string) $response->getBody(), true);
 
-            // 'computed' is the interpolated value (references resolved)
-            // 'raw' is the un-interpolated template string
-            return $body['secret']['value']['computed'] ?? $body['secret']['value']['raw'] ?? null;
+            // Missing secrets return 200 with null values — not 404.
+            // 'computed' is the interpolated value (references resolved); 'raw' is the template string.
+            return $body['value']['computed'] ?? $body['value']['raw'] ?? null;
         } catch (ClientException $e) {
-            if ($e->getResponse()->getStatusCode() === 404) {
-                return null;
-            }
             throw new RuntimeException(
                 'DopplerDriver: failed to fetch secret: ' . $e->getMessage(),
                 0,
@@ -70,15 +96,14 @@ class DopplerDriver extends AbstractDriver
     {
         $results = array_fill_keys($paths, null);
 
-        $token   = $this->config['token']   ?? throw new RuntimeException('DopplerDriver: token required');
-        $project = $this->config['project'] ?? throw new RuntimeException('DopplerDriver: project required');
-        $config  = $this->config['config']  ?? throw new RuntimeException('DopplerDriver: config required');
+        $token = $this->config['token'] ?? throw new RuntimeException('DopplerDriver: token required');
+        [$project, $config] = $this->resolveProjectConfig($token);
 
         try {
             $response = $this->httpClient()->get(
                 self::BASE_URL . '/v3/configs/config/secrets/download',
                 [
-                    'query'   => ['project' => $project, 'config' => $config, 'format' => 'json'],
+                    'query'   => $this->buildQuery(['format' => 'json'], $project, $config),
                     'headers' => ['Authorization' => 'Bearer ' . $token],
                 ]
             );
