@@ -2,6 +2,9 @@
 
 Pull secrets from AWS SSM, Secrets Manager, Azure Key Vault, GCP Secret Manager, HashiCorp Vault, Infisical, and Doppler directly into your Laravel config files — using a single `redacted()` helper that works exactly like `env()`.
 
+[![codecov](https://codecov.io/gh/yamut/laravel-redacted/graph/badge.svg?token=VYP11ZGSJ5)](https://codecov.io/gh/yamut/laravel-redacted)
+[![CI](https://github.com/yamut/laravel-redacted/actions/workflows/ci.yml/badge.svg)](https://github.com/yamut/laravel-redacted/actions/workflows/ci.yml)
+
 ```php
 // config/database.php
 'password' => redacted('asm://prod/myapp/db#password', env('DB_PASSWORD')),
