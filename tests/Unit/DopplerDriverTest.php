@@ -25,6 +25,11 @@ class DopplerDriverTest extends TestCase
         'config'  => 'production',
     ];
 
+    private function secretResponse(string $name, ?string $computed, ?string $raw = null): string
+    {
+        return json_encode(['name' => $name, 'value' => ['computed' => $computed, 'raw' => $raw ?? $computed], 'success' => true]);
+    }
+
     private function makeDriver(array $config = []): DopplerDriver
     {
         return new DopplerDriver(array_merge($this->baseConfig, $config));
@@ -49,7 +54,7 @@ class DopplerDriverTest extends TestCase
     {
         $driver = $this->makeDriver();
         $this->injectGuzzle($driver, [
-            new Response(200, [], json_encode(['secret' => ['value' => ['computed' => 'secret_value', 'raw' => 'secret_value']]])),
+            new Response(200, [], $this->secretResponse('DATABASE_URL', 'secret_value')),
         ]);
 
         $this->assertSame('secret_value', $driver->get('DATABASE_URL'));
@@ -63,7 +68,7 @@ class DopplerDriverTest extends TestCase
     {
         $driver = $this->makeDriver();
         $this->injectGuzzle($driver, [
-            new Response(200, [], json_encode(['secret' => ['value' => ['raw' => 'raw_value']]])),
+            new Response(200, [], json_encode(['name' => 'API_KEY', 'value' => ['computed' => null, 'raw' => 'raw_value'], 'success' => true])),
         ]);
 
         $this->assertSame('raw_value', $driver->get('API_KEY'));
@@ -73,11 +78,12 @@ class DopplerDriverTest extends TestCase
      * @throws ReflectionException
      */
     #[Test]
-    public function get_returns_null_on_404(): void
+    public function get_returns_null_when_secret_value_is_null(): void
     {
+        // Missing secrets return 200 with null computed/raw — not a 404.
         $driver = $this->makeDriver();
         $this->injectGuzzle($driver, [
-            new Response(404, [], json_encode(['error' => 'not found'])),
+            new Response(200, [], $this->secretResponse('MISSING', null)),
         ]);
 
         $this->assertNull($driver->get('MISSING'));
@@ -87,7 +93,7 @@ class DopplerDriverTest extends TestCase
      * @throws ReflectionException
      */
     #[Test]
-    public function get_throws_runtime_exception_on_non_404_client_error(): void
+    public function get_throws_on_client_error(): void
     {
         $driver = $this->makeDriver();
         $this->injectGuzzle($driver, [
@@ -98,6 +104,22 @@ class DopplerDriverTest extends TestCase
         $driver->get('FORBIDDEN');
     }
 
+    /**
+     * @throws ReflectionException
+     */
+    #[Test]
+    public function get_throws_on_404_bad_project_or_config(): void
+    {
+        // 404 means the project/config does not exist, not a missing secret.
+        $driver = $this->makeDriver();
+        $this->injectGuzzle($driver, [
+            new Response(404, [], json_encode(['error' => 'project not found'])),
+        ]);
+
+        $this->expectException(RuntimeException::class);
+        $driver->get('KEY');
+    }
+
     #[Test]
     public function get_throws_when_token_missing(): void
     {
@@ -105,6 +127,77 @@ class DopplerDriverTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('token required');
         $driver->get('KEY');
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    #[Test]
+    public function service_token_works_without_project_and_config(): void
+    {
+        $driver = new DopplerDriver(['token' => 'dp.st.test.TOKEN']);
+        $this->injectGuzzle($driver, [
+            new Response(200, [], $this->secretResponse('API_KEY', 'secret_value')),
+        ]);
+
+        $this->assertSame('secret_value', $driver->get('API_KEY'));
+    }
+
+    #[Test]
+    public function personal_token_throws_when_project_missing(): void
+    {
+        $driver = new DopplerDriver(['token' => 'dp.pt.personal.TOKEN', 'config' => 'prd']);
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('project and config are required for personal tokens');
+        $driver->get('KEY');
+    }
+
+    #[Test]
+    public function personal_token_throws_when_config_missing(): void
+    {
+        $driver = new DopplerDriver(['token' => 'dp.pt.personal.TOKEN', 'project' => 'myapp']);
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('project and config are required for personal tokens');
+        $driver->get('KEY');
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    #[Test]
+    public function personal_token_works_with_project_and_config(): void
+    {
+        $driver = new DopplerDriver(['token' => 'dp.pt.personal.TOKEN', 'project' => 'myapp', 'config' => 'prd']);
+        $this->injectGuzzle($driver, [
+            new Response(200, [], $this->secretResponse('API_KEY', 'secret_value')),
+        ]);
+
+        $this->assertSame('secret_value', $driver->get('API_KEY'));
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    #[Test]
+    public function service_token_prefetch_works_without_project_and_config(): void
+    {
+        $driver = new DopplerDriver(['token' => 'dp.st.test.TOKEN']);
+        $this->injectGuzzle($driver, [
+            new Response(200, [], json_encode(['API_KEY' => 'sk_live_abc'])),
+        ]);
+
+        $result = $driver->prefetch(['API_KEY']);
+
+        $this->assertSame('sk_live_abc', $result['API_KEY']);
+    }
+
+    #[Test]
+    public function personal_token_prefetch_throws_when_project_missing(): void
+    {
+        $driver = new DopplerDriver(['token' => 'dp.pt.personal.TOKEN', 'config' => 'prd']);
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('project and config are required for personal tokens');
+        $driver->prefetch(['KEY']);
     }
 
     /**
@@ -186,7 +279,7 @@ class DopplerDriverTest extends TestCase
         // Bulk endpoint returns 500 → fall back to individual GET (200)
         $this->injectGuzzle($driver, [
             new Response(500, [], 'server error'),
-            new Response(200, [], json_encode(['secret' => ['value' => ['computed' => 'individual_value']]])),
+            new Response(200, [], $this->secretResponse('API_KEY', 'individual_value')),
         ]);
 
         $result = $driver->prefetch(['API_KEY']);

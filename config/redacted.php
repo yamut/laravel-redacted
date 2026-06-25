@@ -85,6 +85,8 @@ return [
         'doppler' => [
             'driver'  => 'doppler',
             'token'   => env('DOPPLER_TOKEN'),
+            // Service tokens (dp.st.*): project and config are embedded in the token and may be omitted.
+            // Personal tokens (dp.pt.*): both are required.
             'project' => env('DOPPLER_PROJECT'),
             'config'  => env('DOPPLER_CONFIG'),  // environment name, e.g. 'prd', 'dev'
         ],
