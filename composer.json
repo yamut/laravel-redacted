@@ -3,7 +3,7 @@
     "description": "Resolve Laravel config values from remote secret stores (AWS SSM, Secrets Manager, Azure Key Vault, GCP Secret Manager, HashiCorp Vault, Infisical, Doppler)",
     "type": "library",
     "license": "MIT",
-    "version": "0.1.0",
+    "version": "0.0.1",
     "require": {
         "php": "^8.2",
         "guzzlehttp/guzzle": "^7.0",
