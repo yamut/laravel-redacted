@@ -36,6 +36,15 @@ class Resolver
     private static array $cache = [];
 
     /**
+     * Tracks which cache keys have been persisted to the Laravel cache this process.
+     * Used to lazy-persist values that were fetched during early boot (LoadConfiguration),
+     * before the cache service provider registered and writeToLaravelCache was a no-op.
+     *
+     * @var array<string, true>
+     */
+    private static array $persisted = [];
+
+    /**
      * Config loaded from disk during early boot (before container config is populated).
      */
     private static ?array $diskConfig = null;
@@ -62,13 +71,22 @@ class Resolver
 
             // Layer 1: static cache
             if (array_key_exists($cacheKey, self::$cache)) {
+                // Lazy-persist to the Laravel cache if this value was fetched during
+                // early boot (LoadConfiguration), before the cache service provider
+                // registered and writeToLaravelCache was a no-op.
+                if (self::$cache[$cacheKey] !== null && !isset(self::$persisted[$cacheKey])) {
+                    if (self::writeToLaravelCache($cacheKey, self::$cache[$cacheKey])) {
+                        self::$persisted[$cacheKey] = true;
+                    }
+                }
                 return self::extractValue(self::$cache[$cacheKey], $parsed['json_key'], $fallback);
             }
 
             // Layer 2: Laravel cache store (only when app cache is available)
             $stored = self::readFromLaravelCache($cacheKey);
             if ($stored !== null) {
-                self::$cache[$cacheKey] = $stored;
+                self::$cache[$cacheKey]     = $stored;
+                self::$persisted[$cacheKey] = true;
                 return self::extractValue($stored, $parsed['json_key'], $fallback);
             }
 
@@ -81,7 +99,9 @@ class Resolver
             self::$cache[$cacheKey] = $raw;
 
             if ($raw !== null) {
-                self::writeToLaravelCache($cacheKey, $raw);
+                if (self::writeToLaravelCache($cacheKey, $raw)) {
+                    self::$persisted[$cacheKey] = true;
+                }
                 return self::extractValue($raw, $parsed['json_key'], $fallback);
             }
         } catch (Throwable $e) {
@@ -112,7 +132,8 @@ class Resolver
     public static function warm(array $values): void
     {
         foreach ($values as $key => $value) {
-            self::$cache[$key] = $value;
+            self::$cache[$key]     = $value;
+            self::$persisted[$key] = true;
         }
     }
 
@@ -133,6 +154,7 @@ class Resolver
     public static function clearStaticCache(): void
     {
         self::$cache       = [];
+        self::$persisted   = [];
         self::$diskConfig  = null;
         self::$fakeDrivers = [];
     }
@@ -184,11 +206,11 @@ class Resolver
         }
     }
 
-    private static function writeToLaravelCache(string $cacheKey, string $value): void
+    private static function writeToLaravelCache(string $cacheKey, string $value): bool
     {
         try {
             if (!function_exists('app') || !app()->bound('cache')) {
-                return;
+                return false;
             }
 
             $config = self::getConfig();
@@ -197,8 +219,9 @@ class Resolver
             $prefix = $config['cache']['prefix'] ?? ('redacted:' . config('app.name', 'laravel') . ':');
 
             app('cache')->store($store)->put($prefix . $cacheKey, $value, $ttl);
+            return true;
         } catch (Throwable) {
-            // Cache write failure is non-fatal
+            return false;
         }
     }
 
