@@ -1,4 +1,4 @@
-# laravel-redacted
+![laravel-redacted](art/logo.svg)
 
 Pull secrets from AWS SSM, Secrets Manager, Azure Key Vault, GCP Secret Manager, HashiCorp Vault, Infisical, and Doppler directly into your Laravel config files — using a single `redacted()` helper that works exactly like `env()`.
 
