@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Yamut\Redacted\Console;
 
 use Illuminate\Console\Command;
-use Throwable;
+use InvalidArgumentException;
 use Yamut\Redacted\RedactedManager;
 use Yamut\Redacted\Resolution\Resolver;
 use Yamut\Redacted\Resolution\UriParser;
@@ -29,7 +29,7 @@ class ListCommand extends Command
         $entries      = $scanner->scan($configPath);
         $cacheConfig  = config('redacted.cache', []);
         $store        = $cacheConfig['store'] ?? null;
-        $prefix       = $cacheConfig['prefix'] ?? 'redacted:';
+        $prefix       = $cacheConfig['prefix'] ?? Resolver::DEFAULT_CACHE_PREFIX;
         $cache        = $this->laravel['cache']->store($store);
         $driverFilter = $this->option('driver');
         $reveal       = (bool) $this->option('reveal');
@@ -52,7 +52,21 @@ class ListCommand extends Command
         $rows = [];
 
         foreach ($entries as $entry) {
-            $parsed = UriParser::parse($entry['uri']);
+            // Unparseable URI literals are tolerated at runtime (redacted()
+            // returns the fallback) — surface them as a row instead of crashing.
+            try {
+                $parsed = UriParser::parse($entry['uri']);
+            } catch (InvalidArgumentException) {
+                $rows[] = [
+                    $entry['uri'],
+                    '—',
+                    '(invalid uri)',
+                    '—',
+                    basename($entry['file']) . ':' . $entry['line'],
+                ];
+                continue;
+            }
+
             $scheme = $parsed['scheme'];
 
             if ($driverFilter && $driverFilter !== $scheme) {
@@ -63,12 +77,9 @@ class ListCommand extends Command
             $cached      = $cache->get($prefix . $cacheKey);
             $cacheStatus = $cached !== null ? 'CACHED' : 'MISS';
 
-            $value = null;
-            try {
-                $value = Resolver::resolve($entry['uri']);
-            } catch (Throwable) {
-                $cacheStatus = 'ERROR';
-            }
+            // Resolver::resolve() never throws — driver failures are logged
+            // internally and surface here as null / '(not found)'.
+            $value = Resolver::resolve($entry['uri']);
 
             $displayValue = match (true) {
                 $value === null => '(not found)',

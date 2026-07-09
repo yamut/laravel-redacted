@@ -112,4 +112,25 @@ class ClearCommandTest extends TestCase
         $result = Resolver::resolve('array://prod/key');
         $this->assertSame('static-value', $result);
     }
+
+    /**
+     * @throws InvalidArgumentException
+     * @throws ReflectionException
+     */
+    #[Test]
+    public function it_skips_invalid_uris_without_crashing(): void
+    {
+        $prefix = 'redacted:';
+        $this->app['cache']->store('array')->put($prefix . 'array:prod/key', 'cached-value', 60);
+
+        $this->bindMockScanner([
+            ['uri' => 'not-a-uri',        'file' => '/fake/config/app.php', 'line' => 3],
+            ['uri' => 'array://prod/key', 'file' => '/fake/config/app.php', 'line' => 5],
+        ]);
+
+        $this->artisan('redacted:clear')
+             ->expectsOutputToContain("Skipping invalid URI 'not-a-uri'")
+             ->expectsOutputToContain('Cleared 1 cache entries.')
+             ->assertExitCode(0);
+    }
 }

@@ -52,9 +52,10 @@ class AsmDriver extends AbstractDriver
                 return $result['SecretString'];
             }
 
+            // SecretBinary is a blob shape — the SDK's response parser has
+            // already base64-decoded it, so this is the raw secret bytes.
             if (isset($result['SecretBinary'])) {
-                $decoded = base64_decode($result['SecretBinary'], true);
-                return $decoded !== false ? $decoded : null;
+                return $result['SecretBinary'];
             }
 
             return null;
@@ -84,11 +85,7 @@ class AsmDriver extends AbstractDriver
             // ARNs resolve correctly instead of silently staying null.
             $fetched = [];
             foreach ($result['SecretValues'] as $secret) {
-                $value = $secret['SecretString'] ?? (
-                    isset($secret['SecretBinary']) ? (
-                        base64_decode($secret['SecretBinary'], true) ?: null
-                    ) : null
-                );
+                $value = $secret['SecretString'] ?? $secret['SecretBinary'] ?? null;
 
                 if (isset($secret['Name'])) {
                     $fetched[$secret['Name']] = $value;

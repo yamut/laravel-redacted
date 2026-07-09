@@ -148,4 +148,24 @@ class CacheCommandTest extends TestCase
 
         $this->assertSame('value', Resolver::resolve('array://prod/key'));
     }
+
+    /**
+     * @throws ReflectionException
+     */
+    #[Test]
+    public function it_skips_invalid_uris_without_crashing(): void
+    {
+        $this->app['config']->set('redacted.drivers.array.values', ['prod/key' => 'secret-value']);
+        Resolver::clearStaticCache();
+
+        $this->bindMockScanner([
+            ['uri' => 'not-a-uri',        'file' => '/fake/config/app.php', 'line' => 3],
+            ['uri' => 'array://prod/key', 'file' => '/fake/config/app.php', 'line' => 5],
+        ]);
+
+        $this->artisan('redacted:cache')
+             ->expectsOutputToContain("Skipping invalid URI 'not-a-uri'")
+             ->expectsOutputToContain('Cached 1 secret(s). 1 failed or not found.')
+             ->assertExitCode(1);
+    }
 }

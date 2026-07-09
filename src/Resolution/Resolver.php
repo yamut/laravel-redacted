@@ -8,6 +8,7 @@ use Closure;
 use Throwable;
 use Yamut\Redacted\Contracts\DriverInterface;
 use Yamut\Redacted\DriverFactory;
+use Yamut\Redacted\Support\EnvCaster;
 
 /**
  * Static resolution engine for the redacted() helper.
@@ -28,6 +29,13 @@ use Yamut\Redacted\DriverFactory;
  */
 class Resolver
 {
+    /**
+     * Fallback cache-key prefix, used only when config omits cache.prefix.
+     * Every consumer of the Laravel cache layer (Resolver, RedactedManager,
+     * console commands) must use this same default so they address the same keys.
+     */
+    public const DEFAULT_CACHE_PREFIX = 'redacted:';
+
     /**
      * In-process static cache. Key: "{scheme}:{path}", value: raw string from driver.
      *
@@ -170,7 +178,7 @@ class Resolver
         }
 
         if ($jsonKey === null) {
-            return $raw;
+            return EnvCaster::cast($raw);
         }
 
         $decoded = json_decode($raw, true);
@@ -198,7 +206,7 @@ class Resolver
 
             $config = self::getConfig();
             $store  = $config['cache']['store'] ?? null;
-            $prefix = $config['cache']['prefix'] ?? ('redacted:' . config('app.name', 'laravel') . ':');
+            $prefix = $config['cache']['prefix'] ?? self::DEFAULT_CACHE_PREFIX;
 
             return app('cache')->store($store)->get($prefix . $cacheKey);
         } catch (Throwable) {
@@ -216,7 +224,7 @@ class Resolver
             $config = self::getConfig();
             $store  = $config['cache']['store'] ?? null;
             $ttl    = (int) ($config['cache']['ttl'] ?? 3600);
-            $prefix = $config['cache']['prefix'] ?? ('redacted:' . config('app.name', 'laravel') . ':');
+            $prefix = $config['cache']['prefix'] ?? self::DEFAULT_CACHE_PREFIX;
 
             app('cache')->store($store)->put($prefix . $cacheKey, $value, $ttl);
             return true;

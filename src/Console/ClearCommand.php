@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Yamut\Redacted\Console;
 
 use Illuminate\Console\Command;
+use InvalidArgumentException;
 use Yamut\Redacted\Resolution\Resolver;
 use Yamut\Redacted\Resolution\UriParser;
 use Yamut\Redacted\Support\ConfigScanner;
@@ -22,13 +23,20 @@ class ClearCommand extends Command
         $entries     = $scanner->scan($configPath);
         $cacheConfig = config('redacted.cache', []);
         $store       = $cacheConfig['store'] ?? null;
-        $prefix      = $cacheConfig['prefix'] ?? 'redacted:';
+        $prefix      = $cacheConfig['prefix'] ?? Resolver::DEFAULT_CACHE_PREFIX;
         $cache       = $this->laravel['cache']->store($store);
 
         $cleared = 0;
 
         foreach ($entries as $entry) {
-            $parsed   = UriParser::parse($entry['uri']);
+            // Unparseable URI literals have no cache entry to clear — skip them.
+            try {
+                $parsed = UriParser::parse($entry['uri']);
+            } catch (InvalidArgumentException) {
+                $this->warn("Skipping invalid URI '{$entry['uri']}' (" . basename($entry['file']) . ':' . $entry['line'] . ')');
+                continue;
+            }
+
             $cacheKey = $prefix . $parsed['scheme'] . ':' . $parsed['path'];
 
             if ($cache->forget($cacheKey)) {

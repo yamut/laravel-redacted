@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Yamut\Redacted\Console;
 
 use Illuminate\Console\Command;
+use InvalidArgumentException;
 use Throwable;
 use Yamut\Redacted\RedactedManager;
 use Yamut\Redacted\Resolution\Resolver;
@@ -37,22 +38,31 @@ class CacheCommand extends Command
             return self::SUCCESS;
         }
 
-        // Group unique paths by scheme for batch prefetching
+        $rows    = [];
+        $fetched = 0;
+        $failed  = 0;
+
+        // Group unique paths by scheme for batch prefetching. Unparseable URI
+        // literals are tolerated at runtime (redacted() returns the fallback),
+        // so skip them here instead of aborting the whole command.
         $byScheme = [];
         foreach ($entries as $entry) {
-            $parsed = UriParser::parse($entry['uri']);
+            try {
+                $parsed = UriParser::parse($entry['uri']);
+            } catch (InvalidArgumentException) {
+                $this->warn("Skipping invalid URI '{$entry['uri']}' (" . basename($entry['file']) . ':' . $entry['line'] . ')');
+                $rows[] = [$entry['uri'], 'INVALID URI'];
+                $failed++;
+                continue;
+            }
             $byScheme[$parsed['scheme']][] = $parsed['path'];
         }
 
         $cacheConfig = config('redacted.cache', []);
         $store       = $cacheConfig['store'] ?? null;
         $ttl         = (int) ($cacheConfig['ttl'] ?? 3600);
-        $prefix      = $cacheConfig['prefix'] ?? 'redacted:';
+        $prefix      = $cacheConfig['prefix'] ?? Resolver::DEFAULT_CACHE_PREFIX;
         $cache       = $this->laravel['cache']->store($store);
-
-        $rows    = [];
-        $fetched = 0;
-        $failed  = 0;
 
         foreach ($byScheme as $scheme => $paths) {
             $paths = array_values(array_unique($paths));

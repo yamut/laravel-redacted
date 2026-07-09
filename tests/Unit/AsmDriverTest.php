@@ -57,15 +57,18 @@ class AsmDriverTest extends TestCase
      * @throws ReflectionException
      */
     #[Test]
-    public function get_returns_decoded_secret_binary(): void
+    public function get_returns_secret_binary_bytes(): void
     {
+        // The SDK's response parser base64-decodes blob shapes before the driver
+        // sees them, so a mocked Result must carry the already-decoded bytes.
+        // Use bytes that are NOT valid base64 to catch accidental double-decoding.
         $driver = new AsmDriver(['region' => 'us-east-1']);
-        $binaryValue = base64_encode('binary-secret');
+        $binaryValue = "\x00\xff binary-secret \xfe\x01";
         $this->injectClient($driver, $this->makeClientWithMock([
             new Result(['SecretBinary' => $binaryValue]),
         ]));
 
-        $this->assertSame('binary-secret', $driver->get('prod/binary-secret'));
+        $this->assertSame($binaryValue, $driver->get('prod/binary-secret'));
     }
 
     /**

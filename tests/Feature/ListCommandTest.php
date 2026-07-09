@@ -132,4 +132,22 @@ class ListCommandTest extends TestCase
              ->expectsOutputToContain('blocked in the production environment')
              ->assertExitCode(1);
     }
+
+    /**
+     * @throws ReflectionException
+     */
+    #[Test]
+    public function it_lists_invalid_uris_without_crashing(): void
+    {
+        $this->app['config']->set('redacted.drivers.array.values', ['prod/key' => 'secret']);
+
+        $this->bindMockScanner([
+            ['uri' => 'not-a-uri',        'file' => '/fake/config/app.php', 'line' => 3],
+            ['uri' => 'array://prod/key', 'file' => '/fake/config/app.php', 'line' => 5],
+        ]);
+
+        $this->artisan('redacted:list')
+             ->expectsOutputToContain('(invalid uri)')
+             ->assertExitCode(0);
+    }
 }

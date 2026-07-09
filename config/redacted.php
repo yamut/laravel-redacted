@@ -6,6 +6,28 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Variables that must stay in .env
+    |--------------------------------------------------------------------------
+    |
+    | Do NOT resolve these via redacted() — they are read before config files
+    | run, or are required to bootstrap redacted itself:
+    |
+    |   APP_ENV     — loaded by DetectEnvironment before LoadConfiguration.
+    |   APP_KEY     — safe to resolve via redacted(), but always add env('APP_KEY')
+    |                 as a fallback in case the remote fetch fails on first boot.
+    |
+    | Driver credentials (AWS_*, VAULT_TOKEN, DOPPLER_TOKEN, INFISICAL_CLIENT_SECRET,
+    | AZURE_CLIENT_SECRET, etc.) must also remain in .env — the driver needs them to
+    | construct itself, creating a hard circular dependency if they were redacted.
+    |
+    | If REDACTED_CACHE_STORE is 'redis', keep Redis auth credentials in .env too.
+    | Resolving them via redacted() prevents the cache from ever being written,
+    | causing every request to re-hit the remote secret store.
+    |
+    */
+
+    /*
+    |--------------------------------------------------------------------------
     | Default Driver
     |--------------------------------------------------------------------------
     |
@@ -115,9 +137,10 @@ return [
     'cache' => [
         'store'  => env('REDACTED_CACHE_STORE', 'file'),
         'ttl'    => (int) env('REDACTED_CACHE_TTL', 3600),
-        // Prefix includes APP_NAME so two apps sharing a Redis/Memcached cluster
-        // don't collide. Override with REDACTED_CACHE_PREFIX if needed.
-        'prefix' => env('REDACTED_CACHE_PREFIX', 'redacted:' . env('APP_NAME', 'laravel') . ':'),
+        // If multiple apps share a cache store (Redis, Memcached), give each app
+        // a distinct prefix (e.g. REDACTED_CACHE_PREFIX="redacted:myapp:") so
+        // their cache keys don't collide.
+        'prefix' => env('REDACTED_CACHE_PREFIX', 'redacted:'),
     ],
 
     /*

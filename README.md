@@ -44,6 +44,8 @@ That's it. No middleware, no boot listeners, no service container gymnastics. Ju
 - [Octane and long-running processes](#octane-and-long-running-processes)
 - [Custom drivers](#custom-drivers)
 - [Fallback values](#fallback-values)
+- [Type coercion](#type-coercion)
+- [What must stay in `.env`](#what-must-stay-in-env)
 - [The #fragment syntax](#the-fragment-syntax)
 
 ---
@@ -808,6 +810,8 @@ This works with any driver that returns JSON: ASM (naturally), HashiCorp Vault (
 
 If the raw value isn't valid JSON, or if the requested key doesn't exist in the decoded object, the fallback is returned.
 
+Fragment values keep their JSON types as-is — they are not passed through the [type coercion](#type-coercion) applied to plain values.
+
 ---
 
 ## Fallback values
@@ -828,6 +832,61 @@ redacted('ssm:///prod/myapp/db-password', env('DB_PASSWORD'))
 The closure form is useful when computing the fallback has side effects or is expensive — the closure is only invoked if it's actually needed.
 
 **On failures:** The resolver catches all exceptions internally. A network outage, an expired credential, a malformed response — all of these fall through to the fallback silently. This is intentional: you don't want a transient API hiccup to crash your app boot. The tradeoff is that misconfiguration can be quiet. If something isn't resolving and you don't know why, `redacted:list` is your first debugging stop.
+
+---
+
+## Type coercion
+
+Plain (non-fragment) values pass through the same type coercion Laravel applies to `env()` — literally the same code path, `Illuminate\Support\Env`, applied to the string the driver returns:
+
+| Stored value (case-insensitive) | Resolves to                             |
+| ------------------------------- | --------------------------------------- |
+| `true` / `(true)`               | `true` (bool)                            |
+| `false` / `(false)`             | `false` (bool)                           |
+| `null` / `(null)`               | `null`                                   |
+| `empty` / `(empty)`             | `''` (empty string)                      |
+| `"quoted"` / `'quoted'`         | `quoted` (surrounding quotes stripped)   |
+| anything else                   | the string, unchanged                    |
+
+This makes `redacted()` a drop-in replacement for `env()` in config files: a parameter stored as the string `true` behaves exactly like `SOMETHING=true` in `.env` would. It also covers stores like SSM Parameter Store that can't hold empty values — store the literal string `empty` (or `null`) to represent them.
+
+Two things to be aware of:
+
+- A secret stored as the literal string `null` resolves to `null`, **not** to your fallback. This matches `env()`, where the default applies only when the variable is unset — not when it's set to `null`.
+- **Fragment-extracted values are never coerced.** JSON is natively typed: in `{"flag": true, "label": "true"}`, `#flag` is already a real boolean, and `#label` is the *string* `"true"` and stays a string. Coercion only applies to plain string values, where there's no type system to consult.
+
+---
+
+## What must stay in `.env`
+
+Not everything can or should go through `redacted()`. A handful of variables must remain as real environment variables — either in `.env` or set by your infrastructure — because of when and how Laravel reads them.
+
+### `APP_ENV`
+
+Laravel's `DetectEnvironment` bootstrapper reads this directly from `.env` **before** config files are loaded. There is no way to intercept it with `redacted()` — the value is already fixed by the time any config file runs. Must be in `.env`.
+
+### `APP_KEY`
+
+Can technically be provided via `redacted()`, but requires caution. If the remote fetch fails at any point before the static cache is warm — first deploy, credential misconfiguration, transient network issue — the resolved key will be null. Laravel will then throw `RuntimeException: No application encryption key has been specified.` the first time anything touches encryption (sessions, cookies, encrypted models).
+
+Always chain `env('APP_KEY')` as a fallback:
+
+```php
+// config/app.php
+'key' => redacted('ssm:///prod/myapp/app-key', env('APP_KEY')),
+```
+
+This way `.env` covers the bootstrap case and the remote store is the authoritative source once the cache is warm.
+
+### Driver credentials
+
+The variables that authenticate your secret store — `AWS_DEFAULT_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `VAULT_TOKEN`, `DOPPLER_TOKEN`, `INFISICAL_CLIENT_SECRET`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `GOOGLE_CLOUD_PROJECT` — must be in `.env`. The driver needs them to construct itself. If they were behind `redacted()`, the driver couldn't be bootstrapped to fetch them. Hard circular dependency.
+
+### Cache store credentials
+
+If you set `REDACTED_CACHE_STORE=redis`, the Redis credentials (`REDIS_PASSWORD`, `REDIS_URL`) must also be in `.env`. If Redis auth credentials are themselves managed via `redacted()` and the redacted cache store is Redis, the package can't authenticate to write the cache, so every request falls through to the remote store. The resolver catches the error so it won't break, but it's a silent performance regression — every request hits your secret store API instead of cache.
+
+The simplest fix is to keep the redacted cache on `file` (the default) and only use Redis for the app's own cache. Alternatively, use a dedicated Redis instance or ACL user for the redacted cache that requires no password.
 
 ---
 

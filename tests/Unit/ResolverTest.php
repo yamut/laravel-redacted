@@ -108,6 +108,90 @@ class ResolverTest extends TestCase
         $this->assertSame('fallback', $result);
     }
 
+    // -------------------------------------------------------------------------
+    // Type coercion (Laravel/dotenv rules)
+    // -------------------------------------------------------------------------
+
+    #[Test]
+    public function it_coerces_true_string_to_boolean(): void
+    {
+        foreach (['true', '(true)', 'TRUE', 'True'] as $value) {
+            $this->app['config']->set('redacted.drivers.array.values', ['key' => $value]);
+            Resolver::clearStaticCache();
+            $this->assertTrue(Resolver::resolve('array://key'), "Expected true for '$value'");
+        }
+    }
+
+    #[Test]
+    public function it_coerces_false_string_to_boolean(): void
+    {
+        foreach (['false', '(false)', 'FALSE', 'False'] as $value) {
+            $this->app['config']->set('redacted.drivers.array.values', ['key' => $value]);
+            Resolver::clearStaticCache();
+            $this->assertFalse(Resolver::resolve('array://key'), "Expected false for '$value'");
+        }
+    }
+
+    #[Test]
+    public function it_coerces_null_string_to_null(): void
+    {
+        foreach (['null', '(null)', 'NULL', 'Null'] as $value) {
+            $this->app['config']->set('redacted.drivers.array.values', ['key' => $value]);
+            Resolver::clearStaticCache();
+            $this->assertNull(Resolver::resolve('array://key'), "Expected null for '$value'");
+        }
+    }
+
+    #[Test]
+    public function it_coerces_empty_string_to_empty_string(): void
+    {
+        foreach (['empty', '(empty)', 'EMPTY'] as $value) {
+            $this->app['config']->set('redacted.drivers.array.values', ['key' => $value]);
+            Resolver::clearStaticCache();
+            $this->assertSame('', Resolver::resolve('array://key'), "Expected '' for '$value'");
+        }
+    }
+
+    #[Test]
+    public function it_strips_surrounding_quotes(): void
+    {
+        $this->app['config']->set('redacted.drivers.array.values', ['key' => '"hello"']);
+        Resolver::clearStaticCache();
+        $this->assertSame('hello', Resolver::resolve('array://key'));
+
+        $this->app['config']->set('redacted.drivers.array.values', ['key' => "'world'"]);
+        $this->app['cache']->store('array')->flush();
+        $this->app->forgetInstance('redacted');
+        Resolver::clearStaticCache();
+        $this->assertSame('world', Resolver::resolve('array://key'));
+    }
+
+    #[Test]
+    public function it_passes_through_plain_strings_unchanged(): void
+    {
+        $this->app['config']->set('redacted.drivers.array.values', ['key' => 'hunter2']);
+        Resolver::clearStaticCache();
+        $this->assertSame('hunter2', Resolver::resolve('array://key'));
+    }
+
+    #[Test]
+    public function type_coercion_does_not_apply_to_json_fragment_values(): void
+    {
+        // JSON natively types values — a JSON "true" is already bool true before we touch it.
+        // A JSON "null" is PHP null. These should NOT be re-cast by EnvCaster.
+        $this->app['config']->set('redacted.drivers.array.values', [
+            'prod/config' => '{"flag":true,"nothing":null,"label":"true"}',
+        ]);
+        Resolver::clearStaticCache();
+
+        $this->assertTrue(Resolver::resolve('array://prod/config#flag'));
+        $this->assertNull(Resolver::resolve('array://prod/config#nothing'));
+        // "true" as a JSON string value stays as a PHP string "true"
+        $this->assertSame('true', Resolver::resolve('array://prod/config#label'));
+    }
+
+    // -------------------------------------------------------------------------
+
     #[Test]
     public function it_populates_static_cache_on_first_resolve(): void
     {

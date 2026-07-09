@@ -198,7 +198,7 @@ class RedactedManager extends Manager
             }
             $cacheConfig = app('config')->get('redacted.cache', []);
             $store       = $cacheConfig['store'] ?? null;
-            $prefix      = $cacheConfig['prefix'] ?? ('redacted:' . config('app.name', 'laravel') . ':');
+            $prefix      = $cacheConfig['prefix'] ?? Resolver::DEFAULT_CACHE_PREFIX;
             app('cache')->store($store)->forget($prefix . $scheme . ':' . $path);
         } catch (Throwable) {
         }
