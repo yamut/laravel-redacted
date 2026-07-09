@@ -884,9 +884,11 @@ The variables that authenticate your secret store — `AWS_DEFAULT_REGION`, `AWS
 
 ### Cache store credentials
 
-If you set `REDACTED_CACHE_STORE=redis`, the Redis credentials (`REDIS_PASSWORD`, `REDIS_URL`) must also be in `.env`. If Redis auth credentials are themselves managed via `redacted()` and the redacted cache store is Redis, the package can't authenticate to write the cache, so every request falls through to the remote store. The resolver catches the error so it won't break, but it's a silent performance regression — every request hits your secret store API instead of cache.
+If you set `REDACTED_CACHE_STORE=redis`, the Redis credentials (`REDIS_PASSWORD`, `REDIS_URL`) fall under the same rule as [driver credentials](#driver-credentials) above: keep them in `.env`. If they're themselves managed via `redacted()`, the package can't authenticate to write the cache, so every request falls through to the remote store. The resolver catches the error so it won't break, but it's a silent performance regression — every request hits your secret store API instead of cache.
 
-The simplest fix is to keep the redacted cache on `file` (the default) and only use Redis for the app's own cache. Alternatively, use a dedicated Redis instance or ACL user for the redacted cache that requires no password.
+The fix is to move those variables back to `.env`. If you'd rather isolate the redacted cache from your app's Redis entirely, use a dedicated Redis instance or ACL user for it that requires no password.
+
+Switching the redacted cache to `file` also sidesteps the auth error, but think about it before reaching for it as a fix on its own: Laravel's file cache driver writes values unencrypted to `storage/framework/cache/data`. That's the same trust boundary as `.env` and `bootstrap/cache/config.php` (both already contain your secrets in plaintext on disk), so it's not a new exposure for this package — but it *is* a second on-disk plaintext copy of every cached secret, on top of whatever `config:cache` already produces, so don't pick it as a workaround for a credential that should just be in `.env` in the first place.
 
 ---
 
