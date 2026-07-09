@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Yamut\Redacted\Tests\Unit;
 
+use Illuminate\Support\Facades\Log;
 use PHPUnit\Framework\Attributes\Test;
 use Psr\SimpleCache\InvalidArgumentException;
+use ReflectionMethod;
 use RuntimeException;
 use Yamut\Redacted\Drivers\AbstractDriver;
 use Yamut\Redacted\Resolution\Resolver;
@@ -337,5 +339,119 @@ class ResolverTest extends TestCase
         $this->app['cache']->store('array')->flush();
 
         $this->assertNull(Resolver::resolve('array://prod/key'));
+    }
+
+    // -------------------------------------------------------------------------
+    // Early boot: no container-bound Manager (resolveDriver's disk-config path)
+    // -------------------------------------------------------------------------
+
+    #[Test]
+    public function it_resolves_via_disk_config_when_manager_is_not_bound(): void
+    {
+        $this->app['config']->set('redacted.drivers.array.values', [
+            'prod/key' => 'disk_value',
+        ]);
+        Resolver::clearStaticCache();
+
+        // Simulates redacted() being called before RedactedServiceProvider registers.
+        unset($this->app['redacted']);
+
+        $result = Resolver::resolve('array://prod/key');
+        $this->assertSame('disk_value', $result);
+    }
+
+    #[Test]
+    public function unknown_scheme_falls_back_to_default_driver_during_early_boot(): void
+    {
+        // Documented quirk: when the Manager isn't bound yet, an unrecognised
+        // scheme silently resolves through the *default* driver's config instead
+        // of throwing — unlike the container-bound Manager path, which throws
+        // for an unknown scheme. See makeDriverFromDiskConfig().
+        $this->app['config']->set('redacted.default', 'array');
+        $this->app['config']->set('redacted.drivers.array.values', [
+            'anything' => 'default_driver_value',
+        ]);
+        Resolver::clearStaticCache();
+
+        unset($this->app['redacted']);
+
+        $result = Resolver::resolve('unknownscheme://anything');
+        $this->assertSame('default_driver_value', $result);
+    }
+
+    #[Test]
+    public function get_config_falls_back_to_package_default_when_container_config_is_unavailable(): void
+    {
+        Resolver::clearStaticCache();
+
+        $configInstance = $this->app->make('config');
+        unset($this->app['config']);
+
+        try {
+            $method = new ReflectionMethod(Resolver::class, 'getConfig');
+            $config = $method->invoke(null);
+        } finally {
+            $this->app->instance('config', $configInstance);
+        }
+
+        // config/redacted.php's own shipped defaults, read straight off disk.
+        $this->assertSame('env', $config['default']);
+        $this->assertArrayHasKey('ssm', $config['drivers']);
+        $this->assertArrayHasKey('array', $config['drivers']);
+    }
+
+    // -------------------------------------------------------------------------
+    // Lazy-persist to Laravel cache (values fetched before cache is bound)
+    // -------------------------------------------------------------------------
+
+    #[Test]
+    public function it_lazy_persists_to_laravel_cache_on_a_later_static_cache_hit(): void
+    {
+        $this->app['config']->set('redacted.drivers.array.values', ['prod/key' => 'lazy_value']);
+        Resolver::clearStaticCache();
+
+        $cacheInstance = $this->app->make('cache');
+        unset($this->app['cache']); // simulates the cache service provider not having registered yet
+
+        $first = Resolver::resolve('array://prod/key');
+        $this->assertSame('lazy_value', $first);
+
+        $this->app->instance('cache', $cacheInstance); // cache becomes available later in boot
+
+        // Hits the static cache (Layer 1), not the driver — but should now
+        // lazily persist to the Laravel cache since it wasn't written the first time.
+        $second = Resolver::resolve('array://prod/key');
+        $this->assertSame('lazy_value', $second);
+
+        $cached = $this->app['cache']->store('array')->get('redacted:array:prod/key');
+        $this->assertSame('lazy_value', $cached);
+    }
+
+    // -------------------------------------------------------------------------
+    // Failure logging
+    // -------------------------------------------------------------------------
+
+    #[Test]
+    public function driver_exception_is_logged_when_log_is_bound(): void
+    {
+        Log::spy();
+
+        $throwingDriver = new class (['driver' => 'throwing']) extends AbstractDriver {
+            public function get(string $path): ?string
+            {
+                throw new RuntimeException('simulated driver failure');
+            }
+        };
+        Resolver::setFakeDriver('throwlog', $throwingDriver);
+
+        Resolver::resolve('throwlog://some/path', 'fallback');
+
+        Log::shouldHaveReceived('error')
+            ->once()
+            ->withArgs(function (string $message, array $context) {
+                return $message === 'redacted: resolution failed, using fallback'
+                    && $context['uri'] === 'throwlog://some/path'
+                    && $context['exception'] === RuntimeException::class;
+            });
     }
 }
